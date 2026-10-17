@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "wqvpad"
-version = "0.1.0"
+version = "0.1.1"
 description = "Download photos from Casio WQV wrist cameras through Casio PAD infrared adapters on modern computers"
 readme = "README.md"
 license = {text = "MIT"}
