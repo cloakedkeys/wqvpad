@@ -38,10 +38,18 @@ Download photos from **Casio WQV wrist cameras** (WQV-1, WQV-2, WQV-3, WQV-10) o
 
 | Watch | What you get |
 |---|---|
-| WQV-1, WQV-2 (black and white) | PNG pictures, 120 by 120 pixels in shades of grey. If a photo has a title, it is saved next to the picture in a small text file with the same name, ending in title.txt. |
-| WQV-3, WQV-10 (colour) | JPEG pictures. The date and title Casio stored with each photo are copied into the picture itself, so photo apps can show them. |
+| WQV-1, WQV-2 (black and white) | PNG pictures, 120 by 120 pixels in shades of grey. |
+| WQV-3, WQV-10 (colour) | JPEG pictures. |
 
-Every file gets the date the photo was taken, both in its name (`WQV_20010714_01.jpg`) and as its file date.
+Each picture is named after the date it was taken, then a number, then its title if you gave it one on the watch:
+
+```
+WQV_20010714_01 PARK.jpg
+WQV_20010714_02.jpg
+WQV_20010715_01 MY CAT.png
+```
+
+So files sort in the order the photos were taken. Characters Windows does not allow in file names (such as `?` `*` `/` `:`) are replaced with `-`. The date and title are also stored inside each picture, so they are not lost if you rename the file, and the file's own date is set to when the photo was taken.
 
 Casio's own software never supported the PAD-5 with the WQV-1/2. wqvpad builds every frame itself, so in principle any adapter can talk to any watch, but this combination has never been tried.
 

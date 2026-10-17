@@ -385,3 +385,49 @@ def test_cli_capture_file(tmp_path):
     text = log.read_text()
     assert text.startswith("# wqvpad") and "Photo data and titles are removed" in text
     assert "ff d8 ff" not in text and _hex(b"DEMO") not in text
+
+
+# ------------------------------------------------------------------ file names
+@pytest.mark.parametrize("title,expected", [
+    ("PARK", "PARK"),
+    ("MY  CAT ", "MY CAT"),
+    ('A<B>C:D"E/F\\G|H?I*J', "A-B-C-D-E-F-G-H-I-J"),
+    ("TAB\tAND\x01CTRL\x9f", "TAB-AND-CTRL-"),
+    ("TRAILING DOTS...", "TRAILING DOTS"),
+    ("   ", ""),
+    ("***", ""),
+    ("CON", "CON-"),
+    ("lpt1", "lpt1-"),
+])
+def test_safe_title(title, expected):
+    from wqvpad.images import safe_title
+    assert safe_title(title) == expected
+
+
+def test_photo_file_names(tmp_path):
+    from wqvpad.images import PhotoWriter, parse_mono_record
+    import datetime as dt
+    w = PhotoWriter(tmp_path)
+
+    def rec(title, day):
+        r = bytearray(MONO_RECORD)
+        r[:24] = title.encode().ljust(24, b" ")
+        r[24:29] = bytes((1, 3, day, 12, 0))
+        return parse_mono_record(bytes(r))
+
+    names = [w.save_mono(rec(t, d)).name for t, d in
+             [("PARK", 2), ("", 2), ("PARK", 2), ("WHY?*", 3)]]
+    assert names == ["WQV_20010302_01 PARK.png", "WQV_20010302_02.png",
+                     "WQV_20010302_03 PARK.png", "WQV_20010303_01 WHY--.png"]
+    assert not list(tmp_path.glob("*.txt"))          # no separate title files any more
+    from PIL import Image
+    im = Image.open(tmp_path / names[0])
+    assert im.info["Title"] == "PARK" and im.info["Creation Time"] == "2001-03-02 12:00"
+    t = (tmp_path / names[0]).stat().st_mtime
+    assert dt.datetime.fromtimestamp(t) == dt.datetime(2001, 3, 2, 12, 0)
+
+
+def test_colour_photo_names_use_title(tmp_path):
+    res = download(SimTransport(Wqv310Watch(10, demo_jpegs())), _opts(tmp_path))
+    assert [p.name for p in res.saved] == ["WQV_20010714_01 DEMO 1.jpg", "WQV_20010715_01 DEMO 2.jpg"]
+    assert not list(tmp_path.glob("*.txt"))

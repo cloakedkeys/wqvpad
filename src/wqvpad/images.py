@@ -61,13 +61,17 @@ def split_mono_dump(dump: bytes) -> list[MonoPhoto]:
     return [parse_mono_record(dump[i * MONO_RECORD:(i + 1) * MONO_RECORD]) for i in range(n)]
 
 
-def png_grey(width: int, height: int, pixels: bytes) -> bytes:
+def png_grey(width: int, height: int, pixels: bytes, text: Optional[dict] = None) -> bytes:
+    """Greyscale PNG. `text` adds standard PNG text entries (e.g. Title, Creation Time)."""
     def chunk(tag: bytes, data: bytes) -> bytes:
         return struct.pack(">I", len(data)) + tag + data + struct.pack(">I", zlib.crc32(tag + data) & 0xFFFFFFFF)
 
     raw = b"".join(b"\x00" + pixels[y * width:(y + 1) * width] for y in range(height))
+    texts = b"".join(chunk(b"tEXt", k.encode("latin-1") + b"\x00" + v.encode("latin-1", "replace"))
+                     for k, v in (text or {}).items() if v)
     return (b"\x89PNG\r\n\x1a\n"
             + chunk(b"IHDR", struct.pack(">IIBBBBB", width, height, 8, 0, 0, 0, 0))
+            + texts
             + chunk(b"IDAT", zlib.compress(raw, 9))
             + chunk(b"IEND", b""))
 
@@ -153,42 +157,69 @@ def find_jpeg_start(data: bytes) -> int:
 
 
 # ---------------------------------------------------------------- saving
+# Characters Windows does not allow in file names, plus control characters
+_BAD_CHARS = set('<>:"/\\|?*') | {chr(c) for c in range(32)} | {chr(c) for c in range(0x7F, 0xA0)}
+_RESERVED = {"CON", "PRN", "AUX", "NUL"} | {f"COM{i}" for i in range(1, 10)} | {f"LPT{i}" for i in range(1, 10)}
+
+
+def safe_title(title: str, limit: int = 40) -> str:
+    """Make a photo title safe to use in a file name on Windows, macOS and Linux.
+
+    Characters Windows forbids (< > : " / \\ | ? * and control characters) become
+    "-", runs of spaces collapse, and leading/trailing spaces and dots go
+    (Windows drops trailing dots and spaces). Returns "" if nothing usable is left.
+    """
+    t = "".join("-" if ch in _BAD_CHARS else ch for ch in title)
+    t = " ".join(t.split())
+    t = t[:limit].strip(" .")
+    if t.upper() in _RESERVED:
+        t = f"{t}-"
+    return t if t.strip("-") else ""
+
+
 class PhotoWriter:
-    """Writes photos as WQV_YYYYMMDD_NN.ext with the photo's time as file time."""
+    """Writes photos as "WQV_YYYYMMDD_NN Title.ext" with the photo's time as file time.
+
+    The date comes first so files sort by when they were taken; NN keeps names
+    unique; the title (made file-name safe) is added when the photo has one.
+    The title is also stored inside the picture (EXIF for JPEG, text for PNG).
+    """
 
     def __init__(self, outdir: Path) -> None:
         self.outdir = Path(outdir)
         self.outdir.mkdir(parents=True, exist_ok=True)
         self.saved: list[Path] = []
 
-    def _name(self, ts: Optional[dt.datetime], ext: str) -> Path:
+    def _name(self, ts: Optional[dt.datetime], title: str, ext: str) -> Path:
         stem = f"WQV_{ts:%Y%m%d}" if ts else "WQV_undated"
+        existing = {p.name for p in self.outdir.iterdir()}
         n = 1
-        while True:
-            p = self.outdir / f"{stem}_{n:02d}{ext}"
-            if not p.exists():
-                return p
+        while any(name.startswith(f"{stem}_{n:02d}") and name[len(stem) + 3:len(stem) + 4] in (" ", ".")
+                  for name in existing):
             n += 1
+        nice = safe_title(title)
+        return self.outdir / (f"{stem}_{n:02d}" + (f" {nice}" if nice else "") + ext)
 
-    def _finish(self, path: Path, ts: Optional[dt.datetime], title: str) -> Path:
+    def _finish(self, path: Path, ts: Optional[dt.datetime]) -> Path:
         if ts:
             t = ts.timestamp()
             os.utime(path, (t, t))
-        if title:
-            path.with_name(path.stem + "_title.txt").write_text(title + "\n", encoding="utf-8")
         self.saved.append(path)
         return path
 
     def save_mono(self, photo: MonoPhoto) -> Path:
-        path = self._name(photo.timestamp, ".png")
-        path.write_bytes(png_grey(W, H, photo.pixels))
-        return self._finish(path, photo.timestamp, photo.title)
+        path = self._name(photo.timestamp, photo.title, ".png")
+        text = {"Title": photo.title, "Software": "wqvpad", "Source": "Casio WQV-1/WQV-2"}
+        if photo.timestamp:
+            text["Creation Time"] = photo.timestamp.strftime("%Y-%m-%d %H:%M")
+        path.write_bytes(png_grey(W, H, photo.pixels, text))
+        return self._finish(path, photo.timestamp)
 
     def save_jpeg(self, data: bytes, model: int) -> Path:
         jpeg, meta = convert_casio_jpeg(data, model)
-        path = self._name(meta.timestamp, ".jpg")
+        path = self._name(meta.timestamp, meta.title, ".jpg")
         path.write_bytes(jpeg)
-        return self._finish(path, meta.timestamp, meta.title)
+        return self._finish(path, meta.timestamp)
 
     def save_raw(self, name: str, data: bytes) -> Path:
         path = self.outdir / name
