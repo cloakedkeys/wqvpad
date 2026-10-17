@@ -36,10 +36,10 @@ Download photos from **Casio WQV wrist cameras** (WQV-1, WQV-2, WQV-3, WQV-10) o
 | **PAD-1** | 9-pin serial | An OEM Parallax LiteLink pod (HP HSDL-7001 chip, shipped with the PC-Unite HBX-100). Works as a COM port. wqvpad resets it to 115,200 baud with an RTS pulse at startup. It is powered from the serial control lines, so a weak USB-serial adapter may not power it. |
 | Other serial IrDA pods | 9-pin serial or TTL | Any "dumb" pod that passes bytes through may work with `--adapter serial`, for example a Locus Engineering IR module on a 5 V TTL-serial adapter with its BR pin held high for 115,200 ([wiring guide](https://chrismcovell.com/WQVLink_Connection_Help/)). Never connect TTL modules to a real RS-232 port. |
 
-| Watch | Status |
+| Watch | What you get |
 |---|---|
-| WQV-1, WQV-2 (monochrome) | Saved as 120×120 greyscale PNG, with the photo title in a `_title.txt` file |
-| WQV-3, WQV-10 (colour) | Saved as JPEG, with Casio's date and title converted to standard EXIF |
+| WQV-1, WQV-2 (black and white) | PNG pictures, 120 by 120 pixels in shades of grey. If a photo has a title, it is saved next to the picture in a small text file with the same name, ending in title.txt. |
+| WQV-3, WQV-10 (colour) | JPEG pictures. The date and title Casio stored with each photo are copied into the picture itself, so photo apps can show them. |
 
 Every file gets the date the photo was taken, both in its name (`WQV_20010714_01.jpg`) and as its file date.
 
