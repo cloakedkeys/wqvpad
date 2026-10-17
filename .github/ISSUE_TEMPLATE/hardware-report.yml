@@ -1,0 +1,53 @@
+name: Hardware test report
+description: Tell us how wqvpad worked (or didn't) with your watch and adapter
+labels: ["hardware report"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for testing! Reports that it worked are just as useful as problems.
+        Please attach a log made with `--capture log.txt`. It never contains your photos or photo titles.
+  - type: dropdown
+    id: watch
+    attributes:
+      label: Watch
+      options: [WQV-1, WQV-2, WQV-3, WQV-10, Not sure]
+    validations:
+      required: true
+  - type: dropdown
+    id: adapter
+    attributes:
+      label: Adapter
+      options: [PAD-5 (USB), PAD-2B (serial), PAD-2 (serial), PAD-1 (serial), Other]
+    validations:
+      required: true
+  - type: input
+    id: serial
+    attributes:
+      label: USB-to-serial adapter (serial pods only)
+      placeholder: e.g. FTDI FT232RL cable, DriverGenius USB232A-E-C
+  - type: input
+    id: os
+    attributes:
+      label: Operating system
+      placeholder: e.g. Windows 11 24H2, macOS 15, Ubuntu 24.04
+    validations:
+      required: true
+  - type: dropdown
+    id: result
+    attributes:
+      label: Result
+      options: [All photos downloaded, Some photos downloaded, Connected but failed, Watch never answered, Adapter not found]
+    validations:
+      required: true
+  - type: textarea
+    id: details
+    attributes:
+      label: What happened
+      description: The command you ran, what wqvpad printed, and what the watch showed.
+      render: text
+  - type: textarea
+    id: log
+    attributes:
+      label: Capture log
+      description: Drag log.txt here (made by adding `--capture log.txt` to your command).

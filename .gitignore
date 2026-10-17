@@ -1,0 +1,9 @@
+__pycache__/
+*.egg-info/
+build/
+dist/
+.pytest_cache/
+wqv_photos/
+demo_out/
+
+src/wqvpad/bin/

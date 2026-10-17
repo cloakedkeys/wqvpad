@@ -1,0 +1,102 @@
+name: CI
+
+on:
+  push:
+  pull_request:
+  release:
+    types: [published]
+
+env:
+  LIBWDI_TAG: v1.5.1
+  WDK_URL: https://go.microsoft.com/fwlink/p/?LinkID=253170
+
+jobs:
+  test:
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, windows-latest, macos-latest]
+        python: ["3.9", "3.13"]
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python }}
+      - run: pip install -e ".[test]"
+      - run: pytest -q
+      - run: wqvpad demo --model 10 --out demo_out
+
+  # Builds libwdi's wdi-simple.exe (LGPL v3) with WinUSB support only, using
+  # libwdi's own MinGW recipe. 32-bit like Zadig; it carries both the x86 and
+  # x64 installers, so it works on 32 and 64-bit Windows.
+  wdi-simple:
+    runs-on: windows-latest
+    defaults:
+      run:
+        shell: msys2 {0}
+    steps:
+      - uses: msys2/setup-msys2@v2
+        with:
+          msystem: mingw32
+          update: true
+          install: >-
+            mingw-w64-i686-toolchain
+            base-devel
+            autotools
+            git
+      - uses: actions/checkout@v4
+        with:
+          repository: pbatard/libwdi
+          ref: ${{ env.LIBWDI_TAG }}
+          fetch-depth: 0
+          submodules: recursive
+      - name: Get the WinUSB redistributable files (Microsoft WDK 8.0 redist)
+        shell: cmd
+        run: |
+          curl -L ${{ env.WDK_URL }} -o wdk-redist.msi
+          msiexec /a wdk-redist.msi /qn TARGETDIR=%CD%\wdk
+      - name: Build
+        run: |
+          ./bootstrap.sh
+          ./configure --build=i686-w64-mingw32 --host=i686-w64-mingw32 --enable-examples-build --disable-debug --disable-shared --with-wdkdir="wdk/Windows Kits/8.0" --with-wdfver=1011
+          make
+          sha256sum examples/wdi-simple.exe
+      - uses: actions/upload-artifact@v4
+        with:
+          name: wdi-simple
+          path: examples/wdi-simple.exe
+
+  windows-exe:
+    needs: [test, wdi-simple]
+    runs-on: windows-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - uses: actions/download-artifact@v4
+        with:
+          name: wdi-simple
+          path: src/wqvpad/bin
+      - run: pip install . pyinstaller
+      - run: >-
+          pyinstaller --onefile --name wqvpad
+          --collect-binaries libusb_package
+          --add-binary "src/wqvpad/bin/wdi-simple.exe;wqvpad/bin"
+          --add-data "third_party;third_party"
+          packaging/wqvpad_entry.py
+      - run: dist/wqvpad.exe demo --model 1 --out demo_out
+      - run: dist/wqvpad.exe install-driver --help
+      - uses: actions/upload-artifact@v4
+        with:
+          name: wqvpad-windows
+          path: dist/wqvpad.exe
+      - name: Attach wqvpad.exe to the release
+        if: github.event_name == 'release'
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: gh release upload "${{ github.event.release.tag_name }}" dist/wqvpad.exe --clobber -R "${{ github.repository }}"

@@ -1,0 +1,29 @@
+[build-system]
+requires = ["setuptools>=61"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "wqvpad"
+version = "0.1.0"
+description = "Download photos from Casio WQV wrist cameras through Casio PAD infrared adapters on modern computers"
+readme = "README.md"
+license = {text = "MIT"}
+requires-python = ">=3.9"
+dependencies = [
+  "pyserial>=3.5",
+  "pyusb>=1.2",
+  "libusb-package>=1.0; platform_system == 'Windows'",
+]
+
+[project.optional-dependencies]
+test = ["pytest", "pillow"]
+
+[project.scripts]
+wqvpad = "wqvpad.cli:main"
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
+[tool.pytest.ini_options]
+pythonpath = ["src"]
+testpaths = ["tests"]
