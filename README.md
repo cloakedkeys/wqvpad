@@ -100,9 +100,17 @@ The installer is `wdi-simple` from Pete Batard's [libwdi](https://github.com/pba
 
 ### PAD-1 / PAD-2 / PAD-2B (serial)
 
-1. Connect the pod to a USB-to-serial adapter. Adapters with a real FTDI chip work best.
+1. Connect the pod to a USB-to-serial adapter. Adapters with a genuine FTDI chip work best (see below).
 2. Run `wqvpad list` to find its COM port.
 3. Recommended for FTDI adapters: in Device Manager, open the port's **Port Settings → Advanced** and set **Latency Timer** to **1 ms**. Casio warned that USB-serial adapters can be unreliable with the PAD-2B, and slow buffering is the usual cause.
+
+**Recommended USB-to-serial adapters** (genuine FTDI FT232R chip and a 9-pin RS-232 plug), cheapest first. Prices are approximate, in USD, as of October 2026:
+
+* **Sabrent CB-FTDI** (about $14-16): 6 ft cable, FTDI FT232RL chipset.
+* **FTDI US232R-10** (about $25): made by FTDI itself, so the chip is guaranteed genuine. Very short (10 cm), so you may want a DB9 extension cable.
+* **Gearmo FTDI-LED** (about $29): 5 ft cable with send/receive lights, handy for seeing whether the pod is talking.
+
+Avoid **null-modem** adapters (for example the StarTech ICUSB232FTN): they swap the wires the pod uses for data and power, so it will not work. Also avoid cheap no-name cables, which often carry counterfeit chips, and bare "TTL" or "3.3 V" boards without a 9-pin plug.
 
 A PAD-2 through a USB-to-RS-232 adapter at 115,200 baud has been confirmed working with Casio's own WQV Link on modern Windows ([Chris Covell's guide](https://chrismcovell.com/WQVLink_Connection_Help/)). That guide also advises connecting the PAD-2 only while you use it: its author suspects leaving one attached while the PC slept damaged it.
 
